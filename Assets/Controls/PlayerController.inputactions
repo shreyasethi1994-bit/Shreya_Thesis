@@ -1,126 +1,142 @@
 {
-    "name": "Player Control",
+    "name": "PlayerController",
     "maps": [
         {
             "name": "Gameplay",
-            "id": "193b8da1-123f-4aa1-86e1-a5456e1040f3",
+            "id": "88096494-4750-4783-842c-a4ad1f6b1502",
             "actions": [
                 {
                     "name": "Move",
-                    "type": "Button",
-                    "id": "2d40e71c-3364-4149-8c45-8b8ef2487b45",
+                    "type": "Value",
+                    "id": "b6bca3ae-76b5-4d71-8fd6-db55074eaadd",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
-                    "initialStateCheck": false
+                    "initialStateCheck": true
                 },
                 {
                     "name": "Rotate",
-                    "type": "Button",
-                    "id": "7714f93c-67bf-423d-9384-82f6901b4c3d",
+                    "type": "Value",
+                    "id": "521ceab1-3c6c-4df3-8572-c3a21d142fa3",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
-                    "initialStateCheck": false
+                    "initialStateCheck": true
                 }
             ],
             "bindings": [
                 {
-                    "name": "",
-                    "id": "df7caecb-55cc-4360-8f9d-60317d6c96d5",
+                    "name": "2D Vector",
+                    "id": "f59befd2-8ceb-4063-af3f-a37f9957c85c",
+                    "path": "2DVector",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Move",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "up",
+                    "id": "5683bc1e-36c6-4c24-abee-e183393a339d",
                     "path": "<XInputController>/rightStick/up",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Move",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "099c2f1b-9562-484e-a804-778c32695322",
+                    "name": "down",
+                    "id": "cc4b228b-e47a-4e5b-8633-6276088822a3",
                     "path": "<XInputController>/rightStick/down",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Move",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "bc47549d-d403-4496-9ed9-1cc8af800ab9",
+                    "name": "left",
+                    "id": "4ea8d451-7ffd-47e1-b6d6-a819e1254b95",
                     "path": "<XInputController>/rightStick/left",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Move",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "d94a64af-f312-4f1f-97d6-dbfa7194a1f6",
+                    "name": "right",
+                    "id": "ac066ac4-9b79-496c-9747-da62868efbd7",
                     "path": "<XInputController>/rightStick/right",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Move",
                     "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "2D Vector",
+                    "id": "d94a995d-8450-4b15-bb44-3d9b278ea64d",
+                    "path": "2DVector",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rotate",
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "03bdcc42-37ca-4662-9eb5-f821b19303f4",
+                    "name": "up",
+                    "id": "248c232f-7ce0-458a-ad2e-0309067616c6",
                     "path": "<XInputController>/leftStick/up",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Rotate",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "237f1c97-a017-4587-9136-3817e252d86c",
-                    "path": "<XInputController>/leftStick/left",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Rotate",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "16bf6224-9e1a-4ef1-b113-d1d444a4cf25",
+                    "name": "down",
+                    "id": "b90736ce-fa41-4676-89c0-2c2186b8ab22",
                     "path": "<XInputController>/leftStick/down",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Rotate",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "a70de710-93cb-4d84-80b1-1b2613c607ad",
+                    "name": "left",
+                    "id": "28eae7cb-e3df-428c-8d43-b4941ee3d80b",
+                    "path": "<XInputController>/leftStick/left",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rotate",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "right",
+                    "id": "226f78e3-974d-4b0b-8100-75325244330c",
                     "path": "<XInputController>/leftStick/right",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Rotate",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 }
             ]
         }
     ],
-    "controlSchemes": [
-        {
-            "name": "New Control Scheme",
-            "bindingGroup": "New Control Scheme",
-            "devices": []
-        }
-    ]
+    "controlSchemes": []
 }
