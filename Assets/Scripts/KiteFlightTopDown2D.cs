@@ -30,15 +30,65 @@ public class KiteFlightTopDown2D : MonoBehaviour
     [Tooltip("Degrees per second at full stick deflection")]
     public float turnSpeed = 90f;
 
+    [Header("Altitude — Climbing (Pump to fly)")]
+    [Tooltip("Both sticks must move together (same direction) within this tolerance to count as a synced pump")]
+    public float syncTolerance = 0.4f;
+
+    [Tooltip("Minimum stick speed (units/sec) to register as part of a pump stroke — filters out tiny drift")]
+    public float minPumpSpeed = 1.5f;
+
+    [Tooltip("How many direction-reversals per second of MAX pumping gives MAX lift")]
+    public float pumpRateForMaxLift = 4f;
+
+    [Tooltip("Maximum upward speed achieved at full vigorous pumping")]
+    public float maxClimbSpeed = 8f;
+
+    [Tooltip("How quickly the pump rate estimate decays when you slow down or stop")]
+    public float pumpRateDecay = 2.5f;
+
+    [Tooltip("Time window used to measure pump rate (seconds) — shorter = more responsive, longer = smoother")]
+    public float pumpRateWindow = 1.2f;
+
+    [Header("Altitude — Descending (Dive)")]
+    [Tooltip("Right stick pulled down past this threshold triggers a descend")]
+    public float diveThreshold = 0.3f;
+
+    [Tooltip("Downward speed while diving (right stick down)")]
+    public float descendSpeed = 3f;
+
+    [Tooltip("Sink speed when not pumping and not actively diving — gravity wins if you stop")]
+    public float passiveSinkSpeed = 1.5f;
+
+    [Header("Altitude Limits")]
+    public float minHeight = 0f;
+    public float maxHeight = 25f;
+
+    [Header("Animation")]
+    [Tooltip("Drag your kite's Animator here — needs a bool parameter called 'IsFlapping'")]
+    public Animator birdAnimator;
+
     [Header("Smoothing")]
     public float rotationSmoothing = 6f;
     public float speedSmoothing = 4f;
+    public float verticalSmoothing = 5f;
 
     // ── Private ───────────────────────────────────────────────────
     private Rigidbody rb;
     private float currentYaw;
     private float currentSpeed;
+    private float currentVerticalSpeed;
     private float fixedXRotation;   // captured from the sprite's own resting pose
+
+    public bool IsFlapping { get; private set; }   // true whenever pumping vigorously enough to climb
+    public bool IsDiving   { get; private set; }
+    public float CurrentHeight => transform.position.y;
+    public float CurrentPumpRate { get; private set; }  // exposed for debugging/UI — reversals per second
+
+    // ── Pump tracking state ──────────────────────────────────────
+    private float prevMoveY, prevRotateY;          // previous frame's stick Y, to detect direction
+    private int prevDirection = 0;                  // -1, 0, or +1 — last frame's combined movement direction
+    private readonly System.Collections.Generic.List<float> reversalTimestamps = new();
+    private float flapAnimTimer;                     // brief flash for the animator bool
 
     // Cached most-recent stick values — updated by OnMove/OnRotate
     private Vector2 moveInput;
@@ -99,6 +149,81 @@ public class KiteFlightTopDown2D : MonoBehaviour
         float targetSpeed = cruiseSpeed + moveInput.y * boostSpeed;
         targetSpeed = Mathf.Max(targetSpeed, 0f);   // prevent going backward; remove this line if you want reverse
         currentSpeed = Mathf.Lerp(currentSpeed, targetSpeed, Time.deltaTime * speedSmoothing);
+
+        // ── Altitude: PUMP-TO-CLIMB detection ───────────────────────
+        // Model: both sticks must move TOGETHER (same direction, up or
+        // down) — each time that combined direction REVERSES (up→down
+        // or down→up), it counts as half a pump stroke. We measure how
+        // many reversals happened in the last `pumpRateWindow` seconds
+        // and convert that rate directly into climb speed — the faster
+        // and more vigorously you alternate, the more lift you get.
+
+        float moveVel = (moveInput.y - prevMoveY) / Mathf.Max(Time.deltaTime, 0.0001f);
+        float rotateVel = (rotateInput.y - prevRotateY) / Mathf.Max(Time.deltaTime, 0.0001f);
+        prevMoveY = moveInput.y;
+        prevRotateY = rotateInput.y;
+
+        // Are both sticks currently moving in the same direction, fast enough to count?
+        bool movingTogether = Mathf.Abs(moveVel) > minPumpSpeed
+                            && Mathf.Abs(rotateVel) > minPumpSpeed
+                            && Mathf.Abs(moveVel - rotateVel) < syncTolerance * 10f; // same direction & similar speed
+
+        int currentDirection = 0;
+        if (movingTogether)
+            currentDirection = (moveVel + rotateVel) > 0f ? 1 : -1;
+
+        // Detect a reversal: direction flipped from + to - or vice versa (ignore the first sample)
+        if (currentDirection != 0 && prevDirection != 0 && currentDirection != prevDirection)
+        {
+            reversalTimestamps.Add(Time.time);
+        }
+        if (currentDirection != 0)
+            prevDirection = currentDirection;
+
+        // Prune old reversals outside our measurement window
+        reversalTimestamps.RemoveAll(t => Time.time - t > pumpRateWindow);
+
+        // Reversals per second → this IS the pump rate (each up-down-up cycle has 2 reversals,
+        // so dividing by window gives "reversals/sec", which scales the same as pump vigor)
+        CurrentPumpRate = reversalTimestamps.Count / pumpRateWindow;
+
+        float pumpNormalised = Mathf.Clamp01(CurrentPumpRate / pumpRateForMaxLift);
+
+        IsFlapping = pumpNormalised > 0.05f;   // any meaningful pumping flashes the animator
+
+        if (IsFlapping) flapAnimTimer = 0.15f;
+        flapAnimTimer = Mathf.Max(0f, flapAnimTimer - Time.deltaTime);
+
+        // ── Altitude: DESCEND — right stick HELD down, not pumping ──
+        // Important: while pumping, the stick passes through negative
+        // values too (that's the "down" half of each stroke). Diving
+        // should only count when the player is deliberately holding
+        // down rather than actively oscillating — so we require pump
+        // rate to be low AND the stick held down.
+        IsDiving = moveInput.y < -diveThreshold && pumpNormalised < 0.1f;
+
+        float targetVerticalSpeed;
+        if (pumpNormalised > 0.05f)
+        {
+            // Lift scales directly with how vigorously you're pumping right now
+            targetVerticalSpeed = pumpNormalised * maxClimbSpeed;
+        }
+        else if (IsDiving)
+        {
+            targetVerticalSpeed = -descendSpeed;
+        }
+        else
+        {
+            // Not pumping, not diving — gravity wins, kite sinks
+            targetVerticalSpeed = -passiveSinkSpeed;
+        }
+
+        currentVerticalSpeed = Mathf.Lerp(currentVerticalSpeed, targetVerticalSpeed,
+                                           Time.deltaTime * verticalSmoothing);
+
+        // ── Drive the flap animation ────────────────────────────────
+        if (birdAnimator != null)
+            birdAnimator.SetBool("IsFlapping", flapAnimTimer > 0f);
     }
 
     void FixedUpdate()
@@ -115,6 +240,13 @@ public class KiteFlightTopDown2D : MonoBehaviour
         // ground. Instead, build the movement direction from yaw alone.
         Vector3 moveDirection = Quaternion.Euler(0f, currentYaw, 0f) * Vector3.forward;
         Vector3 velocity = moveDirection * currentSpeed;
-        rb.linearVelocity = new Vector3(velocity.x, 0f, velocity.z);
+
+        // ── Apply vertical movement (climb/dive), with height clamp ──
+        float verticalVel = currentVerticalSpeed;
+        float predictedHeight = transform.position.y + verticalVel * Time.fixedDeltaTime;
+        if (predictedHeight < minHeight || predictedHeight > maxHeight)
+            verticalVel = 0f;   // stop at the limit rather than overshoot
+
+        rb.linearVelocity = new Vector3(velocity.x, verticalVel, velocity.z);
     }
 }
