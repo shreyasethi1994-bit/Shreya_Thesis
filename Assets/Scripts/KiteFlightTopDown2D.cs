@@ -80,7 +80,7 @@ public class KiteFlightTopDown2D : MonoBehaviour
     private float fixedXRotation;   // captured from the sprite's own resting pose
 
     public bool IsFlapping { get; private set; }   // true whenever pumping vigorously enough to climb
-    public bool IsDiving   { get; private set; }
+    public bool IsDiving { get; private set; }
     public float CurrentHeight => transform.position.y;
     public float CurrentPumpRate { get; private set; }  // exposed for debugging/UI — reversals per second
 
@@ -143,12 +143,9 @@ public class KiteFlightTopDown2D : MonoBehaviour
 
         currentYaw += turnInput * turnSpeed * Time.deltaTime;
 
-        // ── Right stick (Move) controls forward speed ONLY ─────────
-        // Pushing up increases speed, pulling down slows/reverses.
-        // moveInput.x is ignored entirely — no turning from this stick.
-        float targetSpeed = cruiseSpeed + moveInput.y * boostSpeed;
-        targetSpeed = Mathf.Max(targetSpeed, 0f);   // prevent going backward; remove this line if you want reverse
-        currentSpeed = Mathf.Lerp(currentSpeed, targetSpeed, Time.deltaTime * speedSmoothing);
+        // Forward speed is calculated AFTER pump/dive detection below,
+        // since it needs to know whether either maneuver is active right
+        // now in order to avoid reading the same contaminated stick value.
 
         // ── Altitude: PUMP-TO-CLIMB detection ───────────────────────
         // Model: both sticks must move TOGETHER (same direction, up or
@@ -220,6 +217,30 @@ public class KiteFlightTopDown2D : MonoBehaviour
 
         currentVerticalSpeed = Mathf.Lerp(currentVerticalSpeed, targetVerticalSpeed,
                                            Time.deltaTime * verticalSmoothing);
+
+        // ── Forward speed — decoupled from raw stick value during ──
+        // dive or pump, since moveInput.y is shared by all three
+        // behaviors (speed, dive, pump). Without this, diving or
+        // pumping would also zero/contaminate forward motion.
+        float targetSpeed;
+        if (IsDiving)
+        {
+            // Keep moving forward at a solid pace while diving — a dive
+            // shouldn't stop the kite dead in the air
+            targetSpeed = cruiseSpeed + boostSpeed * 0.5f;
+        }
+        else if (pumpNormalised > 0.05f)
+        {
+            // While actively pumping to climb, hold a steady cruising
+            // speed rather than reading the oscillating raw stick value
+            targetSpeed = cruiseSpeed + boostSpeed * 0.3f;
+        }
+        else
+        {
+            // Normal flight — right stick Y directly controls speed
+            targetSpeed = cruiseSpeed + Mathf.Max(moveInput.y, 0f) * boostSpeed;
+        }
+        currentSpeed = Mathf.Lerp(currentSpeed, targetSpeed, Time.deltaTime * speedSmoothing);
 
         // ── Drive the flap animation ────────────────────────────────
         if (birdAnimator != null)
