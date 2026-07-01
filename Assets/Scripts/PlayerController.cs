@@ -39,6 +39,7 @@ public class NotPlayerController : MonoBehaviour
     {
         _YAxis += rotateVec.x * turnSpeed * Time.deltaTime;
         transform.localRotation = Quaternion.Euler(0, _YAxis, 0);
+        transform.localRotation = Quaternion.EulerAngles(rotateVec.x, rotateVec.y, 45.0f);
     }
 
     public void Dive(Vector3 diveVec)
