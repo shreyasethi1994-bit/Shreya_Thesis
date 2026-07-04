@@ -13,9 +13,15 @@ public class FlightController : MonoBehaviour
 
     [Header("Reverse Hold Turnaround")]
     [Tooltip("How long the left stick must be held back before the bird auto-turns 180 degrees.")]
-    [SerializeField] private float reverseHoldDuration = 1f;
+    [SerializeField] private float reverseHoldDuration = 0.75f;
     [Tooltip("How far back the stick must be pushed (0-1) to count as 'holding reverse'.")]
     [SerializeField] private float reverseInputThreshold = 0.5f;
+    [Tooltip("Minimum time between automatic 180 turnarounds, so stick noise can't chain multiple flips back-to-back.")]
+    [SerializeField] private float turnaroundCooldown = 15f;
+
+    [Header("Altitude")]
+    [Tooltip("How high above its starting altitude the bird can climb.")]
+    [SerializeField] private float maxClimbHeight = 400f;
 
     [SerializeField] private Vector3 moveDirection;
     private Vector3 turnDirection;
@@ -24,11 +30,12 @@ public class FlightController : MonoBehaviour
     // not a 3D model with a nose - so we never touch pitch/roll, only turn it around world up.
     private Quaternion flatRotation;
     private float yawAngle;
+    private float startHeight;
 
     private float reverseHoldTimer;
-    private bool hasTurnedAroundThisHold;
+    private float lastTurnaroundTime = -Mathf.Infinity;
 
-    [SerializeField] new Rigidbody rb;
+    [SerializeField] Rigidbody rb;
 
     public InputActionReference fly;
 
@@ -40,6 +47,7 @@ public class FlightController : MonoBehaviour
 
         flatRotation = transform.rotation;
         yawAngle = 0f;
+        startHeight = transform.position.y;
     }
 
     private void OnEnable()
@@ -74,36 +82,42 @@ public class FlightController : MonoBehaviour
     // Right stick: x turns the bird left/right around world up, layered on top of its fixed flat tilt.
     private void Turn(Vector3 input)
     {
+        
         yawAngle += input.x * yawMulitiplier * Time.deltaTime;
     }
 
-    // Holding the left stick back for reverseHoldDuration seconds spins the bird around 180 degrees,
-    // once per hold (won't fire again until the stick is released and pushed back a second time).
+    // Holding the left stick back for reverseHoldDuration seconds spins the bird around 180 degrees.
+    // Gated by a hard cooldown (not just "stick released") so stick noise can't re-trigger it early.
     private void CheckReverseHoldTurnaround(float forwardInput)
     {
         if (forwardInput < -reverseInputThreshold)
         {
             reverseHoldTimer += Time.deltaTime;
 
-            if (reverseHoldTimer >= reverseHoldDuration && !hasTurnedAroundThisHold)
+            bool cooldownElapsed = Time.time - lastTurnaroundTime >= turnaroundCooldown;
+            if (reverseHoldTimer >= reverseHoldDuration && cooldownElapsed)
             {
                 yawAngle += 180f;
-                hasTurnedAroundThisHold = true;
+                lastTurnaroundTime = Time.time;
+                reverseHoldTimer = 0f;
             }
         }
         else
         {
             reverseHoldTimer = 0f;
-            hasTurnedAroundThisHold = false;
         }
     }
 
     // Left stick forward/back moves the bird along the direction it's currently facing (no strafing);
-    // triggers move it up/down. Velocity is smoothed toward the target instead of snapped to it.
+    // triggers move it up/down, capped so it can't climb indefinitely (it has no natural ceiling the
+    // way the terrain gives it a natural floor). Velocity is smoothed toward the target, not snapped to it.
     private void Move(Vector3 input)
     {
         Vector3 heading = Quaternion.AngleAxis(yawAngle, Vector3.up) * new Vector3(0f, 0f, input.z);
         Vector3 targetVelocity = (heading + Vector3.up * input.y) * thrust * thrustMultiplier;
+
+        if (transform.position.y >= startHeight + maxClimbHeight && targetVelocity.y > 0f)
+            targetVelocity.y = 0f;
 
         rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, targetVelocity, accelSmoothing * Time.deltaTime);
     }
