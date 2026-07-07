@@ -45029,7 +45029,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9a5197cb5eef2c48b83ea0d579e13aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  target: {fileID: 0}
+  target: {fileID: 32933626}
   offset: {x: 0, y: 3, z: -8}
   followSpeed: 5
   rotationSpeed: 5
