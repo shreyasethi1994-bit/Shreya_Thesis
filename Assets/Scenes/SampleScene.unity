@@ -755,7 +755,7 @@ MonoBehaviour:
     FieldOfView: 85.418785
     OrthographicSize: 5.53
     NearClipPlane: 0.01
-    FarClipPlane: 1000
+    FarClipPlane: 5000
     Dutch: 0
     ModeOverride: 0
     PhysicalProperties:
@@ -1634,7 +1634,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.01
-  far clip plane: 1000
+  far clip plane: 5000
   field of view: 85.418785
   orthographic: 0
   orthographic size: 5.53
