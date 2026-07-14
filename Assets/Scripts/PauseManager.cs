@@ -26,6 +26,8 @@ public class PauseManager : MonoBehaviour
     [Header("Pause Menu UI")]
     [Tooltip("The Canvas (or root UI object) shown only while paused.")]
     [SerializeField] private GameObject pauseMenuUI;
+    [Tooltip("The settings panel, toggled independently by the Settings button while paused.")]
+    [SerializeField] private GameObject settingsPanel;
 
     // Built directly in code (not via the BirdControls asset) so this works regardless of
     // whatever gameplay action maps exist/are enabled - Start should always be able to pause.
@@ -43,6 +45,17 @@ public class PauseManager : MonoBehaviour
 
         if (pauseMenuUI != null)
             pauseMenuUI.SetActive(false);
+
+        if (settingsPanel != null)
+            settingsPanel.SetActive(false);
+    }
+
+    // Wired to the Settings button. Toggles independently of the rest of the pause menu, which
+    // stays visible/clickable underneath, so clicking Settings again (or Play) closes it again.
+    public void ToggleSettingsPanel()
+    {
+        if (settingsPanel != null)
+            settingsPanel.SetActive(!settingsPanel.activeSelf);
     }
 
     // Call this whenever something else (e.g. FirstPersonToggle) switches which camera is showing
@@ -100,6 +113,9 @@ public class PauseManager : MonoBehaviour
 
         if (pauseMenuUI != null)
             pauseMenuUI.SetActive(false);
+
+        if (settingsPanel != null)
+            settingsPanel.SetActive(false);
 
         Time.timeScale = 1f;
     }
