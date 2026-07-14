@@ -10,6 +10,9 @@ public class FirstPersonToggle : MonoBehaviour
     [Tooltip("Optional - if set, L1 is ignored while the game is paused, and Resume/Pause will know to restore whichever of these two views was active.")]
     [SerializeField] private PauseManager pauseManager;
 
+    [Tooltip("Only visible while first-person view is active.")]
+    [SerializeField] private GameObject fpvMagnetismSphere;
+
     // Built directly in code, same reasoning as PauseManager's Pause action: BirdControls.inputactions
     // already has an unused "First Person View" action bound to the left shoulder, but referencing it
     // from the scene requires a fileID Unity computes on import, which isn't safe to hand-author.
@@ -20,6 +23,9 @@ public class FirstPersonToggle : MonoBehaviour
     {
         toggleAction = new InputAction("FirstPersonView", InputActionType.Button);
         toggleAction.AddBinding("<Gamepad>/leftShoulder");
+
+        if (fpvMagnetismSphere != null)
+            fpvMagnetismSphere.SetActive(false);
     }
 
     private void OnEnable()
@@ -43,6 +49,9 @@ public class FirstPersonToggle : MonoBehaviour
 
         thirdPersonCamera.enabled = !isFirstPerson;
         firstPersonCamera.enabled = isFirstPerson;
+
+        if (fpvMagnetismSphere != null)
+            fpvMagnetismSphere.SetActive(isFirstPerson);
 
         if (pauseManager != null)
             pauseManager.SetActiveGameplayCamera(isFirstPerson ? firstPersonCamera : thirdPersonCamera);

@@ -18,8 +18,8 @@ public class PauseManager : MonoBehaviour
     [Header("Pause Camera Framing")]
     [Tooltip("The bird to look down on while paused.")]
     [SerializeField] private Transform bird;
-    [Tooltip("How high above the bird the pause camera sits (roughly 50-75).")]
-    [SerializeField] private float heightAboveBird = 65f;
+    [Tooltip("How high above the bird the pause camera sits.")]
+    [SerializeField] private float heightAboveBird = 40f;
     [Tooltip("Shifts the camera's look point to the right of the bird (world X), so the bird lands left-of-center on screen - in the middle of the left half rather than dead center. Tune this in Play mode while paused until it looks right for your aspect ratio.")]
     [SerializeField] private float horizontalOffset = 50f;
 
