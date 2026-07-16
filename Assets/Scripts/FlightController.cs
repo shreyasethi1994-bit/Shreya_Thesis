@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -23,6 +24,28 @@ public class FlightController : MonoBehaviour
     [Tooltip("How high above its starting altitude the bird can climb.")]
     [SerializeField] private float maxClimbHeight = 400f;
 
+    [Header("Bird Call")]
+    [Tooltip("Sound played when the right shoulder button is pressed.")]
+    [SerializeField] private AudioClip birdCallClip;
+    [Tooltip("Volume multiplier for the bird call. Can go above 1 to boost it louder than the clip's natural level.")]
+    [SerializeField] private float birdCallVolume = 2f;
+    [Tooltip("Minimum time between bird calls, so it can't be spammed.")]
+    [SerializeField] private float birdCallCooldown = 10f;
+    [Tooltip("Delay between pressing the button and the call actually playing.")]
+    [SerializeField] private float birdCallDelay = 2f;
+
+    [Header("Background Music Muffle")]
+    [Tooltip("The looping background music source - gets muffled briefly whenever the bird call plays.")]
+    [SerializeField] private AudioSource backgroundMusicSource;
+    [Tooltip("How muffled the music gets while the bird call plays (lower = more muffled).")]
+    [SerializeField] private float muffledCutoffFrequency = 500f;
+    [Tooltip("Cutoff frequency representing 'normal, unmuffled' music.")]
+    [SerializeField] private float normalCutoffFrequency = 22000f;
+    [Tooltip("How long the music stays muffled.")]
+    [SerializeField] private float muffleDuration = 8f;
+
+    private AudioLowPassFilter backgroundMusicFilter;
+
     [SerializeField] private Vector3 moveDirection;
     private Vector3 turnDirection;
 
@@ -34,6 +57,12 @@ public class FlightController : MonoBehaviour
 
     private float reverseHoldTimer;
     private float lastTurnaroundTime = -Mathf.Infinity;
+    private float lastBirdCallTime = -Mathf.Infinity;
+
+    // Built directly in code, same reasoning as PauseManager/FirstPersonToggle: BirdControls.inputactions
+    // already has an unused "Bird Sound" action bound to the right shoulder, but referencing it from the
+    // scene requires a fileID Unity computes on import, which isn't safe to hand-author.
+    private InputAction birdCallAction;
 
     [SerializeField] Rigidbody rb;
 
@@ -48,18 +77,73 @@ public class FlightController : MonoBehaviour
         flatRotation = transform.rotation;
         yawAngle = 0f;
         startHeight = transform.position.y;
+
+        birdCallAction = new InputAction("BirdCall", InputActionType.Button);
+        birdCallAction.AddBinding("<Gamepad>/rightShoulder");
+
+        if (backgroundMusicSource != null)
+        {
+            // Added at runtime rather than hand-placed in the scene, so it's guaranteed to exist
+            // and start in a known (fully open, i.e. unmuffled) state.
+            backgroundMusicFilter = backgroundMusicSource.GetComponent<AudioLowPassFilter>();
+            if (backgroundMusicFilter == null)
+                backgroundMusicFilter = backgroundMusicSource.gameObject.AddComponent<AudioLowPassFilter>();
+
+            backgroundMusicFilter.cutoffFrequency = normalCutoffFrequency;
+            backgroundMusicFilter.enabled = false;
+        }
     }
 
     private void OnEnable()
     {
         fly.action.Enable();
         turn.action.Enable();
+
+        birdCallAction.Enable();
+        birdCallAction.performed += OnBirdCallPressed;
     }
 
     private void OnDisable()
     {
         fly.action.Disable();
         turn.action.Disable();
+
+        birdCallAction.performed -= OnBirdCallPressed;
+        birdCallAction.Disable();
+    }
+
+    // Gated by a cooldown (checked at press time, so spamming the button can't queue up multiple calls).
+    // The call itself plays after a delay, and briefly muffles the background music.
+    private void OnBirdCallPressed(InputAction.CallbackContext context)
+    {
+        if (birdCallClip == null) return;
+        if (Time.time - lastBirdCallTime < birdCallCooldown) return;
+
+        lastBirdCallTime = Time.time;
+
+        StartCoroutine(PlayBirdCallAfterDelay());
+        StartCoroutine(MuffleBackgroundMusic());
+    }
+
+    // Uses PlayClipAtPoint rather than a dedicated AudioSource, since this is a one-shot effect
+    // with no need for a persistent source.
+    private IEnumerator PlayBirdCallAfterDelay()
+    {
+        yield return new WaitForSeconds(birdCallDelay);
+        AudioSource.PlayClipAtPoint(birdCallClip, transform.position, birdCallVolume);
+    }
+
+    private IEnumerator MuffleBackgroundMusic()
+    {
+        if (backgroundMusicFilter == null) yield break;
+
+        backgroundMusicFilter.enabled = true;
+        backgroundMusicFilter.cutoffFrequency = muffledCutoffFrequency;
+
+        yield return new WaitForSeconds(muffleDuration);
+
+        backgroundMusicFilter.cutoffFrequency = normalCutoffFrequency;
+        backgroundMusicFilter.enabled = false;
     }
 
     private void Update()
