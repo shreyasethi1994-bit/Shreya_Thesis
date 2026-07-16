@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -19,6 +20,14 @@ public class FirstPersonToggle : MonoBehaviour
     private InputAction toggleAction;
     private bool isFirstPerson;
 
+    // Static so other scripts (e.g. CatchableFish) can react to camera-mode changes without polling
+    // every frame, and can billboard toward whichever camera is actually active - Camera.main isn't
+    // reliable here since only one camera in the scene is tagged MainCamera and it isn't always the
+    // one currently in use (third/first person are two separate Camera components toggled via .enabled).
+    public static event Action<bool> OnFirstPersonChanged;
+    public static bool IsFirstPerson { get; private set; }
+    public static Camera ActiveCamera { get; private set; }
+
     private void Awake()
     {
         toggleAction = new InputAction("FirstPersonView", InputActionType.Button);
@@ -26,6 +35,8 @@ public class FirstPersonToggle : MonoBehaviour
 
         if (fpvMagnetismSphere != null)
             fpvMagnetismSphere.SetActive(false);
+
+        ActiveCamera = thirdPersonCamera;
     }
 
     private void OnEnable()
@@ -55,5 +66,9 @@ public class FirstPersonToggle : MonoBehaviour
 
         if (pauseManager != null)
             pauseManager.SetActiveGameplayCamera(isFirstPerson ? firstPersonCamera : thirdPersonCamera);
+
+        IsFirstPerson = isFirstPerson;
+        ActiveCamera = isFirstPerson ? firstPersonCamera : thirdPersonCamera;
+        OnFirstPersonChanged?.Invoke(isFirstPerson);
     }
 }

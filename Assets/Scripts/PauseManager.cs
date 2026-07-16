@@ -35,8 +35,14 @@ public class PauseManager : MonoBehaviour
 
     public bool IsPaused { get; private set; }
 
+    // Static so scripts that get duplicated many times over (e.g. CatchableFish, one per fish)
+    // can check pause state without needing a per-instance scene reference wired up manually.
+    public static PauseManager Instance { get; private set; }
+
     private void Awake()
     {
+        Instance = this;
+
         pauseAction = new InputAction("Pause", InputActionType.Button);
         pauseAction.AddBinding("<Gamepad>/start");
         pauseAction.AddBinding("<Keyboard>/escape");
